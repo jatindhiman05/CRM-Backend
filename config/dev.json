@@ -1,0 +1,25 @@
+{
+  "PORT": 3000,
+
+  "selectedDb": "mysql",
+
+  "microserviceAuthToken": "CRM_INTERNAL_TOKEN",
+
+  "DB": {
+    "type": "mysql",
+    "mysql": {
+      "host": "localhost",
+      "user": "root",
+      "password": "JJJJJ(!@!)",
+      "database": "CRM_DATABASE"
+    },
+    "mongodb": {
+      "uri": "mongodb://127.0.0.1:27017/todo"
+    }
+  },
+
+  "JWT": {
+    "secret": "crm_super_secret_key",
+    "expiry": "7d"
+  }
+}

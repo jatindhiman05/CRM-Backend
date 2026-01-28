@@ -3,6 +3,7 @@
 const dbHandler = require('../../../database/mysql');
 const logging = require('../../../logging/logging');
 
+
 exports.findApprovedEngineer = async (apiReference) => {
     logging.log(apiReference, { EVENT: 'FINDING_APPROVED_ENGINEER' });
 
@@ -69,111 +70,76 @@ exports.createTicket = async (apiReference, payload) => {
     return result;
 };
 
-exports.fetchTicketById = async (apiReference, ticketId, user = null) => {
+exports.fetchTickets = async (apiReference, opts = {}) => {
     logging.log(apiReference, {
-        EVENT: 'FETCH_TICKET_BY_ID_DAO_START',
-        ticketId,
-        user_id: user?.user_id
+        EVENT: 'FETCH_TICKETS_DAO_START',
+        filters: opts
     });
 
-    const query = `
+    let query = `
         SELECT *
         FROM tickets
-        WHERE id = ?
-        LIMIT 1
+        WHERE 1 = 1
     `;
+    const values = [];
+
+    // ---- Identifiers ----
+    if (opts.id) {
+        query += ` AND id = ?`;
+        values.push(opts.id);
+    }
+
+    // ---- User based filters ----
+    if (opts.reporter) {
+        query += ` AND reporter = ?`;
+        values.push(opts.reporter);
+    }
+
+    if (opts.assignee) {
+        query += ` AND assignee = ?`;
+        values.push(opts.assignee);
+    }
+
+    // Engineer view: tickets where user is reporter OR assignee
+    if (opts.user_id && opts.includeReporterAndAssignee) {
+        query += ` AND (assignee = ? OR reporter = ?)`;
+        values.push(opts.user_id, opts.user_id);
+    }
+
+    // ---- Ticket attributes ----
+    if (opts.status) {
+        query += ` AND status = ?`;
+        values.push(opts.status);
+    }
+
+    if (opts.priority) {
+        query += ` AND ticket_priority = ?`;
+        values.push(opts.priority);
+    }
+
+    // ---- Sorting ----
+    query += ` ORDER BY created_at DESC`;
+
+    // ---- Pagination ----
+    if (opts.limit) {
+        query += ` LIMIT ?`;
+        values.push(Number(opts.limit));
+    }
+
+    if (opts.offset) {
+        query += ` OFFSET ?`;
+        values.push(Number(opts.offset));
+    }
 
     const result = await dbHandler.executeQuery(
         apiReference,
-        'FETCH_TICKET_BY_ID',
+        'FETCH_TICKETS',
         query,
-        [ticketId]
+        values
     );
 
     logging.log(apiReference, {
-        EVENT: 'FETCH_TICKET_BY_ID_DAO_COMPLETE',
-        found: !!result?.length,
-        ticket_id: result?.[0]?.id
-    });
-
-    return result;
-};
-
-exports.fetchAllTickets = async (apiReference) => {
-    logging.log(apiReference, { EVENT: 'FETCH_ALL_TICKETS_DAO_START' });
-
-    const query = `
-        SELECT *
-        FROM tickets
-        ORDER BY created_at DESC
-    `;
-
-    const result = await dbHandler.executeQuery(
-        apiReference,
-        'FETCH_ALL_TICKETS',
-        query,
-        []
-    );
-
-    logging.log(apiReference, {
-        EVENT: 'FETCH_ALL_TICKETS_DAO_COMPLETE',
-        count: result?.length || 0
-    });
-
-    return result;
-};
-
-exports.fetchEngineerTickets = async (apiReference, userId) => {
-    logging.log(apiReference, {
-        EVENT: 'FETCH_ENGINEER_TICKETS_DAO_START',
-        userId
-    });
-
-    const query = `
-        SELECT *
-        FROM tickets
-        WHERE assignee = ?
-           OR reporter = ?
-        ORDER BY created_at DESC
-    `;
-
-    const result = await dbHandler.executeQuery(
-        apiReference,
-        'FETCH_ENGINEER_TICKETS',
-        query,
-        [userId, userId]
-    );
-
-    logging.log(apiReference, {
-        EVENT: 'FETCH_ENGINEER_TICKETS_DAO_COMPLETE',
-        count: result?.length || 0
-    });
-
-    return result;
-};
-
-exports.fetchCustomerTickets = async (apiReference, userId) => {
-    logging.log(apiReference, {
-        EVENT: 'FETCH_CUSTOMER_TICKETS_DAO_START',
-        userId
-    });
-
-    const query = `
-        SELECT *
-        FROM tickets
-        WHERE reporter = ?
-        ORDER BY created_at DESC
-    `;
-
-    const result = await dbHandler.executeQuery(
-        apiReference,
-        'FETCH_CUSTOMER_TICKETS',
-        query,
-        [userId]
-    );
-
-    logging.log(apiReference, {
-        EVENT: 'FETCH_CUSTOMER_TICKETS_DAO_COMPLETE',
+        EVENT: 'FETCH_TICKETS_DAO_COMPLETE',
         count: result?.length || 0
     });
 

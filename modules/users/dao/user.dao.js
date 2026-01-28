@@ -3,114 +3,131 @@
 const dbHandler = require('../../../database/mysql');
 const logging = require('../../../logging/logging');
 
-exports.fetchAllUsers = async (apiReference, filters) => {
-    let whereClause = 'WHERE 1=1';
-    const values = [];
-
+/**
+ * =====================================================
+ * FETCH USERS (LIST OR SINGLE)
+ * =====================================================
+ * Supports:
+ *  - user_id (single user)
+ *  - user_type
+ *  - user_status
+ *  - search (name/email)
+ *  - sorting
+ *  - pagination
+ *
+ * Behaviour:
+ *  - If user_id is passed → returns ONE user (LIMIT 1)
+ *  - Else → returns list with pagination
+ */
+exports.fetchUsers = async (apiReference, opts = {}) => {
     logging.log(apiReference, {
-        EVENT: 'FETCH_ALL_USERS_DAO_START',
-        filters: {
-            user_type: filters.user_type,
-            user_status: filters.user_status,
-            search: filters.search,
-            page: filters.page,
-            limit: filters.limit
-        }
+        EVENT: 'FETCH_USERS_DAO_START',
+        opts
     });
 
-    if (filters.user_type) {
-        whereClause += ' AND user_type = ?';
-        values.push(filters.user_type);
-    }
-
-    if (filters.user_status) {
-        whereClause += ' AND user_status = ?';
-        values.push(filters.user_status);
-    }
-
-    if (filters.search) {
-        whereClause += ' AND (email LIKE ? OR name LIKE ?)';
-        values.push(`%${filters.search}%`, `%${filters.search}%`);
-    }
-
-    
-    const query = `
-    SELECT 
-    id,
-    name,
-    user_id,
-    email,
-    user_type,
-    user_status,
-    created_at
-    FROM users
-    ${whereClause}
-    ORDER BY ${filters.sort_by} ${filters.order}
-    LIMIT ?
-    OFFSET ?
+    let query = `
+        SELECT
+            id,
+            name,
+            user_id,
+            email,
+            user_type,
+            user_status,
+            created_at,
+            updated_at
+        FROM users
+        WHERE 1 = 1
     `;
-    
-    let limit = filters.limit ?? 10;
-    const offset = (filters.page - 1) * limit;
-    values.push(limit, offset);
+
+    const values = [];
+
+    /* =====================================================
+       1️⃣ FETCH BY USER_ID (SINGLE USER)
+    ===================================================== */
+    if (opts.user_id) {
+        query += ` AND user_id = ?`;
+        values.push(opts.user_id);
+    }
+
+    /* =====================================================
+       2️⃣ FILTERS
+    ===================================================== */
+    if (opts.user_type) {
+        query += ` AND user_type = ?`;
+        values.push(opts.user_type);
+    }
+
+    if (opts.user_status) {
+        query += ` AND user_status = ?`;
+        values.push(opts.user_status);
+    }
+
+    if (opts.search) {
+        query += ` AND (email LIKE ? OR name LIKE ?)`;
+        values.push(`%${opts.search}%`, `%${opts.search}%`);
+    }
+
+    /* =====================================================
+       3️⃣ SORTING (SAFE DEFAULTS)
+    ===================================================== */
+    const allowedSortColumns = [
+        'created_at',
+        'updated_at',
+        'name',
+        'email',
+        'user_type',
+        'user_status'
+    ];
+
+    const sortBy = allowedSortColumns.includes(opts.sort_by)
+        ? opts.sort_by
+        : 'created_at';
+
+    const order = opts.order === 'ASC' ? 'ASC' : 'DESC';
+
+    query += ` ORDER BY ${sortBy} ${order}`;
+
+    /* =====================================================
+       4️⃣ PAGINATION
+       - Skip pagination if fetching single user
+    ===================================================== */
+    if (!opts.user_id) {
+        const limit = Number(opts.limit) || 10;
+        const page = Number(opts.page) || 1;
+        const offset = (page - 1) * limit;
+
+        query += ` LIMIT ? OFFSET ?`;
+        values.push(limit, offset);
+    } else {
+        query += ` LIMIT 1`;
+    }
 
     logging.log(apiReference, {
-        EVENT: 'EXECUTING_USERS_QUERY',
-        query_snippet: query.substring(0, 100) + '...',
+        EVENT: 'EXECUTING_FETCH_USERS_QUERY',
+        query_snippet: query.substring(0, 120) + '...',
         values_count: values.length
     });
 
     const result = await dbHandler.executeQuery(
         apiReference,
-        'FETCH_ALL_USERS',
+        'FETCH_USERS',
         query,
         values
     );
 
     logging.log(apiReference, {
-        EVENT: 'FETCH_ALL_USERS_DAO_COMPLETE',
+        EVENT: 'FETCH_USERS_DAO_COMPLETE',
         count: result?.length || 0
     });
 
     return result;
 };
 
-exports.fetchUserByUserId = async (apiReference, user_id) => {
-    logging.log(apiReference, {
-        EVENT: 'FETCH_USER_BY_ID_DAO_START',
-        user_id
-    });
-
-    const query = `
-        SELECT 
-            id, 
-            name, 
-            user_id, 
-            email, 
-            user_type, 
-            user_status,
-            created_at,
-            updated_at
-        FROM users
-        WHERE user_id = ?
-        LIMIT 1
-    `;
-
-    const result = await dbHandler.executeQuery(
-        apiReference,
-        'FETCH_USER_BY_ID',
-        query,
-        [user_id]
-    );
-
-    logging.log(apiReference, {
-        EVENT: 'FETCH_USER_BY_ID_DAO_COMPLETE',
-        found: !!result?.length
-    });
-
-    return result;
-};
-
+/**
+ * =====================================================
+ * UPDATE USER
+ * =====================================================
+ */
 exports.updateUser = async (apiReference, updateObj, user_id) => {
     logging.log(apiReference, {
         EVENT: 'UPDATE_USER_DAO_START',

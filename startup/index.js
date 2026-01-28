@@ -6,6 +6,7 @@ const db = require('../database');
 const startupService = require('./startup.service');
 
 const PORT = config.get('PORT');
+console.log(PORT)
 
 const apiReference = {
     module: 'startup',

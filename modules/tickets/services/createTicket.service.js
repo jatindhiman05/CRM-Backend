@@ -15,9 +15,8 @@ exports.createTicket = async (apiReference, user, data) => {
             title: data.title
         });
 
-        // auto assign engineer
+        // Auto-assign engineer
         const engineer = await ticketDao.findApprovedEngineer(apiReference);
-
         const assignee = engineer?.length ? engineer[0].user_id : null;
 
         logging.log(apiReference, {
@@ -26,13 +25,18 @@ exports.createTicket = async (apiReference, user, data) => {
             available_engineers: engineer?.length || 0
         });
 
+        const maxTicketPriorityRes = await ticketDao.getHighestPriority(apiReference);
+        const maxTicketPriority = maxTicketPriorityRes?.[0]?.['MAX(ticket_priority)'] || 0;
+
+        const ticketPriorityPayload = maxTicketPriority + 500;
+
         const payload = {
             title: data.title,
             description: data.description,
-            ticket_priority: data.ticket_priority || 4,
+            ticket_priority: ticketPriorityPayload,
             status: constants.ticketStatus.OPEN,
             reporter: user.user_id,
-            assignee: assignee
+            assignee
         };
 
         logging.log(apiReference, {
@@ -58,13 +62,13 @@ exports.createTicket = async (apiReference, user, data) => {
         logging.log(apiReference, {
             EVENT: 'TICKET_CREATED_SUCCESS',
             ticket_id: result.insertId,
-            assignee: assignee
+            assignee
         });
 
         response.success = true;
         response.data = {
             ticket_id: result.insertId,
-            assignee: assignee
+            assignee
         };
 
         return response;

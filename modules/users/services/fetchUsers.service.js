@@ -4,14 +4,6 @@ const userDao = require('../dao/user.dao');
 const constants = require('../../../responses/responseConstants');
 const logging = require('../../../logging/logging');
 
-/**
- * =====================================================
- * FETCH USERS (LIST or SINGLE)
- * =====================================================
- * Behaviour:
- *  - If opts.user_id exists → returns ONE user
- *  - Else → returns paginated list
- */
 exports.fetchUsers = async (apiReference, opts = {}) => {
     const response = { success: false };
 
@@ -21,9 +13,6 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
             opts
         });
 
-        /* =====================================================
-           1️⃣ HARD SAFETY GUARDS (NEVER TRUST INPUT)
-        ===================================================== */
         const safeOpts = {
             user_id: opts.user_id,
 
@@ -53,9 +42,6 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
             safeOpts
         });
 
-        /* =====================================================
-           2️⃣ DAO CALL (SINGLE SOURCE OF TRUTH)
-        ===================================================== */
         const users = await userDao.fetchUsers(apiReference, safeOpts);
 
         if (!Array.isArray(users)) {
@@ -68,9 +54,6 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
             return response;
         }
 
-        /* =====================================================
-           3️⃣ SINGLE USER MODE
-        ===================================================== */
         if (safeOpts.user_id) {
             if (!users.length) {
                 response.error = constants.responseMessages.USER_NOT_FOUND;
@@ -84,10 +67,7 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
             response.data = safeUser;
             return response;
         }
-
-        /* =====================================================
-           4️⃣ LIST MODE
-        ===================================================== */
+        
         const sanitizedUsers = users.map(user => {
             const safeUser = { ...user };
             delete safeUser.password;

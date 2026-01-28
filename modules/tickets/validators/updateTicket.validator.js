@@ -27,32 +27,19 @@ exports.validate = async (req, res, next) => {
                     'number.positive': 'Ticket ID must be positive',
                     'any.required': 'Ticket ID is required'
                 }),
-            title: Joi.string().min(3).max(200).optional()
-                .messages({
-                    'string.min': 'Title must be at least 3 characters',
-                    'string.max': 'Title must be less than 200 characters'
-                }),
-            description: Joi.string().min(10).optional()
-                .messages({
-                    'string.min': 'Description must be at least 10 characters'
-                }),
-            status: Joi.string()
-                .valid('OPEN', 'IN_PROGRESS', 'BLOCKED', 'CLOSED')
-                .optional()
-                .uppercase()
-                .messages({
-                    'any.only': 'Status must be one of: OPEN, IN_PROGRESS, BLOCKED, CLOSED'
-                }),
-            ticket_priority: Joi.number().min(1).max(5).optional()
-                .messages({
-                    'number.min': 'Priority must be at least 1',
-                    'number.max': 'Priority must be at most 5'
-                })
+            title: Joi.string().min(3).max(200).optional(),
+            description: Joi.string().min(10).optional(),
+            status: Joi.string().valid('OPEN', 'IN_PROGRESS', 'BLOCKED', 'CLOSED').optional().uppercase(),
+            ticket_priority: Joi.number().min(1).max(5).optional(),
+            before_ticket_id: Joi.number().integer().positive().optional(),
+            after_ticket_id: Joi.number().integer().positive().optional()
         });
 
         const validationData = {
             ...req.body,
-            ticket_id: parseInt(req.params.ticket_id)
+            ticket_id: parseInt(req.params.ticket_id),
+            before_ticket_id: req.params.before_ticket_id ? parseInt(req.params.before_ticket_id) : undefined,
+            after_ticket_id: req.params.after_ticket_id ? parseInt(req.params.after_ticket_id) : undefined
         };
 
         const isValid = await validators.validateFields(
@@ -66,14 +53,12 @@ exports.validate = async (req, res, next) => {
         if (isValid) {
             logging.log(apiReference, { EVENT: 'UPDATE_TICKET_VALIDATION_SUCCESS' });
             req.body = validationData;
-            req.params.ticket_id = validationData.ticket_id;
             next();
         }
     } catch (err) {
         logging.logError(apiReference, err, {
             EVENT: 'UPDATE_TICKET_VALIDATION_ERROR',
-            user: req.user?.user_id,
-            ticket_id: req.params.ticket_id
+            user: req.user?.user_id
         });
         return validators.handleValidationError(res, err);
     }

@@ -30,11 +30,7 @@ exports.validate = async (req, res, next) => {
                     'string.min': 'Description must be at least 10 characters',
                     'any.required': 'Description is required'
                 }),
-            ticket_priority: Joi.number().min(1).max(5).default(4)
-                .messages({
-                    'number.min': 'Priority must be at least 1',
-                    'number.max': 'Priority must be at most 5'
-                })
+    
         });
 
         const isValid = await validators.validateFields(

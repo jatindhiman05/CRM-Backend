@@ -3,22 +3,6 @@
 const dbHandler = require('../../../database/mysql');
 const logging = require('../../../logging/logging');
 
-/**
- * =====================================================
- * FETCH USERS (LIST OR SINGLE)
- * =====================================================
- * Supports:
- *  - user_id (single user)
- *  - user_type
- *  - user_status
- *  - search (name/email)
- *  - sorting
- *  - pagination
- *
- * Behaviour:
- *  - If user_id is passed → returns ONE user (LIMIT 1)
- *  - Else → returns list with pagination
- */
 exports.fetchUsers = async (apiReference, opts = {}) => {
     logging.log(apiReference, {
         EVENT: 'FETCH_USERS_DAO_START',
@@ -41,17 +25,11 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
 
     const values = [];
 
-    /* =====================================================
-       1️⃣ FETCH BY USER_ID (SINGLE USER)
-    ===================================================== */
     if (opts.user_id) {
         query += ` AND user_id = ?`;
         values.push(opts.user_id);
     }
 
-    /* =====================================================
-       2️⃣ FILTERS
-    ===================================================== */
     if (opts.user_type) {
         query += ` AND user_type = ?`;
         values.push(opts.user_type);
@@ -67,9 +45,6 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
         values.push(`%${opts.search}%`, `%${opts.search}%`);
     }
 
-    /* =====================================================
-       3️⃣ SORTING (SAFE DEFAULTS)
-    ===================================================== */
     const allowedSortColumns = [
         'created_at',
         'updated_at',
@@ -87,10 +62,6 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
 
     query += ` ORDER BY ${sortBy} ${order}`;
 
-    /* =====================================================
-       4️⃣ PAGINATION
-       - Skip pagination if fetching single user
-    ===================================================== */
     if (!opts.user_id) {
         const limit = Number(opts.limit) || 10;
         const page = Number(opts.page) || 1;
@@ -123,11 +94,6 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
     return result;
 };
 
-/**
- * =====================================================
- * UPDATE USER
- * =====================================================
- */
 exports.updateUser = async (apiReference, updateObj, user_id) => {
     logging.log(apiReference, {
         EVENT: 'UPDATE_USER_DAO_START',

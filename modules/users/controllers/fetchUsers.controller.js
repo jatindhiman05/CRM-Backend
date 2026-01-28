@@ -18,9 +18,6 @@ exports.fetchUsers = async (req, res, next) => {
             query: req.query
         });
 
-        /* =====================================================
-           BUILD OPTIONS OBJECT (SINGLE SOURCE OF TRUTH)
-        ===================================================== */
         const opts = {
             user_id: req.params.user_id, // undefined for list
 
@@ -41,9 +38,6 @@ exports.fetchUsers = async (req, res, next) => {
             }
         };
 
-        /* =====================================================
-           SERVICE CALL
-        ===================================================== */
         const response = await userService.fetchUsers(
             apiReference,
             opts

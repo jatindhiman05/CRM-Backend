@@ -70,6 +70,23 @@ exports.createTicket = async (apiReference, payload) => {
     return result;
 };
 
+exports.getHighestPriority = async (apiReference) => {
+    logging.log(apiReference, {
+        EVENT: 'GETTING_HIGHEST_PRIORITY',
+    });
+
+    let query = `Select MAX(ticket_priority) from tickets`;
+
+    const result = await dbHandler.executeQuery(
+        apiReference,
+        'GET_HIGHEST_PRIORITY',
+        query,
+        {}
+    );
+
+    return result;
+}
+
 exports.fetchTickets = async (apiReference, opts = {}) => {
     logging.log(apiReference, {
         EVENT: 'FETCH_TICKETS_DAO_START',

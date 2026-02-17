@@ -28,7 +28,7 @@ exports.createTicket = async (apiReference, user, data) => {
         const maxTicketPriorityRes = await ticketDao.getHighestPriority(apiReference);
         const maxTicketPriority = maxTicketPriorityRes?.[0]?.['MAX(ticket_priority)'] || 0;
 
-        const ticketPriorityPayload = maxTicketPriority + 500;
+        const ticketPriorityPayload = parseInt(maxTicketPriority) + 500;
 
         const payload = {
             title: data.title,

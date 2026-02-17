@@ -15,7 +15,6 @@ router.get(
     '/',
     authenticateUser,
     authorizeAdmin,
-    fetchUsersValidator.validate,
     fetchUsersController.fetchUsers
 );
 

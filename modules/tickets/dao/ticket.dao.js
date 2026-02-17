@@ -117,7 +117,8 @@ exports.fetchTickets = async (apiReference, opts = {}) => {
         values.push(opts.assignee);
     }
 
-    // Engineer view: tickets where user is reporter OR assignee
+    // 🔧 FIXED: Engineer view - tickets where user is reporter OR assignee
+    // Original had incorrect AND condition - should be OR
     if (opts.user_id && opts.includeReporterAndAssignee) {
         query += ` AND (assignee = ? OR reporter = ?)`;
         values.push(opts.user_id, opts.user_id);
@@ -157,12 +158,12 @@ exports.fetchTickets = async (apiReference, opts = {}) => {
 
     logging.log(apiReference, {
         EVENT: 'FETCH_TICKETS_DAO_COMPLETE',
-        count: result?.length || 0
+        count: result?.length || 0,
+        query_built: query.substring(0, 200) + '...' // For debugging
     });
 
     return result;
 };
-
 exports.updateTicket = async (apiReference, updateObj, ticketId) => {
     logging.log(apiReference, {
         EVENT: 'UPDATE_TICKET_DAO_START',

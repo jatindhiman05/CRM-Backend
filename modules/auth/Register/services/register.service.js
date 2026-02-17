@@ -113,7 +113,9 @@ exports.register = async (apiReference, values) => {
         response.data = {
             user_id,
             user_type: values.user_type,
-            user_status
+            user_status,
+            name : values.name,
+            email : values.email 
         };
 
         return response;

@@ -8,6 +8,7 @@ exports.fetchUsers = async (apiReference, opts = {}) => {
         EVENT: 'FETCH_USERS_DAO_START',
         opts
     });
+    console.log(opts)
 
     let query = `
         SELECT

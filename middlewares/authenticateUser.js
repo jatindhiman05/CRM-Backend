@@ -9,8 +9,10 @@ exports.authenticateUser = async (req, res, next) => {
 
     try {
         logging.log(apiReference, { EVENT: 'AUTHENTICATE_USER' });
+        console.log(req.headers)
 
         const token = req.headers['access-token'];
+        console.log("token",token)
 
         if (!token) {
             return responses.invalidAuthKey(res);
@@ -22,7 +24,6 @@ exports.authenticateUser = async (req, res, next) => {
             return responses.invalidAuthKey(res);
         }
 
-        //Attach user context (MANDATORY)
         req.user = {
             id: decoded.id,
             user_id: decoded.user_id,

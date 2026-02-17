@@ -15,7 +15,7 @@ exports.updateUser = async (apiReference, payload) => {
         });
 
         // Validate user_id exists
-        const userCheck = await userDao.fetchUserByUserId(apiReference, payload.user_id);
+        const userCheck = await userDao.fetchUsers(apiReference, {user_id : payload.user_id});
 
         if (!userCheck || !userCheck.length) {
             logging.logError(apiReference, {
@@ -30,33 +30,54 @@ exports.updateUser = async (apiReference, payload) => {
 
         // Build update object with validation
         const updateObj = {};
-        const validUserTypes = ['CUSTOMER', 'ENGINEER', 'ADMIN'];
-        const validUserStatuses = ['PENDING', 'APPROVED', 'REJECTED', 'INACTIVE'];
+        let hasValidUpdate = false;
+        let hasActualChange = false;
 
-        if (payload.user_type) {
+        // Valid values based on actual database schema
+        const validUserTypes = ['CUSTOMER', 'ENGINEER', 'ADMIN'];
+        const validUserStatuses = ['APPROVED', 'PENDING', 'BLOCKED']; // Updated to match schema
+
+        // Handle user_type update
+        if (payload.user_type !== undefined && payload.user_type !== null) {
             if (validUserTypes.includes(payload.user_type.toUpperCase())) {
-                updateObj.user_type = payload.user_type.toUpperCase();
+                const newUserType = payload.user_type.toUpperCase();
+                if (newUserType !== existingUser.user_type) {
+                    updateObj.user_type = newUserType;
+                    hasActualChange = true;
+                }
+                hasValidUpdate = true;
             } else {
                 logging.logError(apiReference, {
                     EVENT: 'INVALID_USER_TYPE',
-                    provided_type: payload.user_type
+                    provided_type: payload.user_type,
+                    valid_types: validUserTypes
                 });
+                response.error = constants.responseMessages.INVALID_USER_TYPE;
+                return response; // Return error for invalid type
             }
         }
 
-        if (payload.user_status) {
+        // Handle user_status update - UPDATED to match schema
+        if (payload.user_status !== undefined && payload.user_status !== null) {
             if (validUserStatuses.includes(payload.user_status.toUpperCase())) {
-                updateObj.user_status = payload.user_status.toUpperCase();
+                const newUserStatus = payload.user_status.toUpperCase();
+                if (newUserStatus !== existingUser.user_status) {
+                    updateObj.user_status = newUserStatus;
+                    hasActualChange = true;
+                }
+                hasValidUpdate = true;
             } else {
                 logging.logError(apiReference, {
                     EVENT: 'INVALID_USER_STATUS',
-                    provided_status: payload.user_status
+                    provided_status: payload.user_status,
+                    valid_statuses: validUserStatuses
                 });
+                response.error = constants.responseMessages.INVALID_USER_STATUS;
+                return response; // Return error for invalid status
             }
         }
 
-        // Check for no-op updates
-        const hasValidUpdate = Object.keys(updateObj).length > 0;
+        // Check if we have any valid fields to update
         if (!hasValidUpdate) {
             logging.logError(apiReference, {
                 EVENT: 'NO_VALID_UPDATES_PROVIDED',
@@ -67,15 +88,16 @@ exports.updateUser = async (apiReference, payload) => {
             return response;
         }
 
-        // Check if update actually changes anything
-        const isSameAsExisting =
-            (updateObj.user_type && updateObj.user_type === existingUser.user_type) &&
-            (updateObj.user_status && updateObj.user_status === existingUser.user_status);
-
-        if (isSameAsExisting) {
+        // Check if any of the valid updates actually change the values
+        if (!hasActualChange) {
             logging.logError(apiReference, {
                 EVENT: 'DUPLICATE_UPDATE_REQUEST',
-                user_id: payload.user_id
+                user_id: payload.user_id,
+                requested_updates: payload,
+                existing_values: {
+                    user_type: existingUser.user_type,
+                    user_status: existingUser.user_status
+                }
             });
             response.error = constants.responseMessages.NOTHING_TO_UPDATE;
             return response;
@@ -83,7 +105,8 @@ exports.updateUser = async (apiReference, payload) => {
 
         logging.log(apiReference, {
             EVENT: 'APPLYING_USER_UPDATES',
-            updateObj
+            updateObj,
+            hasActualChange
         });
 
         const updateResult = await userDao.updateUser(apiReference, updateObj, payload.user_id);
@@ -108,7 +131,12 @@ exports.updateUser = async (apiReference, payload) => {
         response.success = true;
         response.data = {
             user_id: payload.user_id,
-            updated_fields: Object.keys(updateObj)
+            updated_fields: Object.keys(updateObj),
+            previous_values: {
+                user_type: existingUser.user_type,
+                user_status: existingUser.user_status
+            },
+            updated_values: updateObj
         };
         return response;
 
